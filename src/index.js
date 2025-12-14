@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routers/authRoutes');
 const goalRoutes = require('./routers/goalRoutes');
 const transcationRouters = require('./routers/transcationRoutes');
+const satisfactionRoutes = require('./routers/satisfactionRoutes');
 dotenv.config();
 
 const app = express();
@@ -94,6 +95,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/transcation', transcationRouters);
+app.use('/api/satisfaction', satisfactionRoutes);
 
 const startServer = async () => {
   try {
