@@ -51,6 +51,10 @@ const transactionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    image_address: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
