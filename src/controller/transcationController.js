@@ -11,6 +11,7 @@ const allowedFields = [
   'source',
   'sms_body',
   'is_auto',
+  'image_address'
 ];
 
 const sanitizePayload = (payload = {}) =>
@@ -82,6 +83,7 @@ const buildTransactionResponse = (transaction) => ({
   source: transaction.source,
   sms_body: transaction.sms_body,
   is_auto: transaction.is_auto,
+  image_address: transaction.image_address,
   createdAt: transaction.createdAt,
   updatedAt: transaction.updatedAt,
 });
