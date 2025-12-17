@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 const parsePositiveNumber = (value, fallback) => {
   const parsed = Number(value);
@@ -128,6 +132,47 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Google token is required' });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { name, email, sub: googleId, picture } = ticket.getPayload();
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        picture,
+      });
+    } else {
+      if (!user.googleId) {
+        user.googleId = googleId;
+      }
+      if (!user.picture) {
+        user.picture = picture;
+      }
+      await user.save();
+    }
+
+    const tokens = await issueTokensForUser(user);
+    return respondWithTokens(res, 200, 'Google login successful', user, tokens);
+  } catch (error) {
+    console.error('Google login error:', error);
+    return res.status(401).json({ message: 'Invalid Google token' });
   }
 };
 
