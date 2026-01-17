@@ -196,12 +196,67 @@ exports.deleteTransaction = async (req, res) => {
   try {
     const transaction = await Transaction.findOneAndDelete({ _id: req.params.id, user: req.user._id });
 
-    if (!transaction) {
-      return res.status(404).json({ message: 'Transaction not found' });
-    }
-
     return res.json({ message: 'Transaction deleted successfully' });
   } catch (error) {
     return handleServerError(res, error, 'Delete transaction error');
+  }
+};
+
+exports.syncTransactions = async (req, res) => {
+  try {
+    const { transactions } = req.body;
+
+    if (!Array.isArray(transactions)) {
+      return res.status(400).json({ message: 'Transactions must be an array' });
+    }
+
+    const processed = [];
+    const errors = [];
+    const added = [];
+
+    // Fetch existing SMS bodies to avoid duplicates
+    // This assumes sms_body is a reliable unique key for an SMS-based transaction
+    const existingTransactions = await Transaction.find({
+      user: req.user._id,
+      sms_body: { $in: transactions.map(t => t.sms_body).filter(Boolean) }
+    }).select('sms_body');
+
+    const existingBodies = new Set(existingTransactions.map(t => t.sms_body));
+
+    for (const txn of transactions) {
+      // Skip if we already have this SMS
+      if (txn.sms_body && existingBodies.has(txn.sms_body)) {
+        continue;
+      }
+
+      const payload = sanitizePayload(txn);
+      // Validate but don't fail batch for one error
+      const err = normalizeTransactionPayload(payload, { requireNameAndAmount: true });
+
+      if (err) {
+        errors.push({ transaction: txn, error: err });
+        continue;
+      }
+
+      processed.push({
+        user: req.user._id,
+        ...payload
+      });
+    }
+
+    if (processed.length > 0) {
+      const result = await Transaction.insertMany(processed);
+      added.push(...result);
+    }
+
+    return res.status(201).json({
+      message: 'Sync complete',
+      addedCount: added.length,
+      errorCount: errors.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (error) {
+    return handleServerError(res, error, 'Sync transactions error');
   }
 };

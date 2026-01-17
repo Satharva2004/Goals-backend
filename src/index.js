@@ -96,6 +96,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/transcation', transcationRouters);
 app.use('/api/satisfaction', satisfactionRoutes);
+app.use('/api/analytics', require('./routers/analyticsRoutes'));
 
 const startServer = async () => {
   try {

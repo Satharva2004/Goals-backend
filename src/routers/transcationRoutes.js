@@ -7,11 +7,13 @@ const {
   updateTransaction,
   partialUpdateTransaction,
   deleteTransaction,
+  syncTransactions,
 } = require('../controller/transcationController');
 
 const router = express.Router();
 
 router.use(authMiddleware);
+router.post('/sync', syncTransactions);
 
 router
   .route('/')
