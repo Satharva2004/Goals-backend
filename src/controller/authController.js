@@ -242,7 +242,7 @@ exports.logout = async (req, res) => {
 
 exports.sendOTP = async (req, res) => {
   try {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, name } = req.body;
     if (!phoneNumber) {
       return res.status(400).json({ message: 'Phone number is required' });
     }
@@ -254,8 +254,11 @@ exports.sendOTP = async (req, res) => {
     if (!user) {
       user = new User({
         phoneNumber,
-        name: `User ${phoneNumber.slice(-4)}` // Default name
+        name: name || `User ${phoneNumber.slice(-4)}`
       });
+    } else if (name) {
+      // Update name if provided during resend or similar
+      user.name = name;
     }
 
     user.otp = otp;
