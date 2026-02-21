@@ -5,6 +5,11 @@ const { OAuth2Client } = require('google-auth-library');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const twilio = require('twilio')(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
 
 const parsePositiveNumber = (value, fallback) => {
   const parsed = Number(value);
@@ -36,6 +41,7 @@ const buildUserPayload = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
+  photo: user.picture,
 });
 
 const pruneExpiredTokens = (user) => {
@@ -162,7 +168,8 @@ exports.googleLogin = async (req, res) => {
       if (!user.googleId) {
         user.googleId = googleId;
       }
-      if (!user.picture) {
+      // Always update picture if available
+      if (picture) {
         user.picture = picture;
       }
       await user.save();
@@ -229,6 +236,65 @@ exports.logout = async (req, res) => {
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.sendOTP = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    let user = await User.findOne({ phoneNumber });
+    if (!user) {
+      user = new User({
+        phoneNumber,
+        name: `User ${phoneNumber.slice(-4)}` // Default name
+      });
+    }
+
+    user.otp = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    await twilio.messages.create({
+      body: `Your verification code is ${otp}. It will expire in 10 minutes.`,
+      from: process.env.TWILIO_FROM_NUMBER,
+      to: phoneNumber,
+    });
+
+    return res.json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    return res.status(500).json({ message: 'Failed to send OTP' });
+  }
+};
+
+exports.verifyOTP = async (req, res) => {
+  try {
+    const { phoneNumber, otp } = req.body;
+    if (!phoneNumber || !otp) {
+      return res.status(400).json({ message: 'Phone number and OTP are required' });
+    }
+
+    const user = await User.findOne({ phoneNumber });
+    if (!user || user.otp !== otp || user.otpExpiresAt < Date.now()) {
+      return res.status(401).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Clear OTP after successful verification
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+
+    const tokens = await issueTokensForUser(user);
+    return respondWithTokens(res, 200, 'Login successful', user, tokens);
+  } catch (error) {
+    console.error('Verify OTP error:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 };

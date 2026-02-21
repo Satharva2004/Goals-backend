@@ -11,10 +11,23 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
       lowercase: true,
       trim: true,
+      sparse: true,
+    },
+    phoneNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+    otp: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
     },
     password: {
       type: String,

@@ -1,11 +1,11 @@
 const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
 const connectDB = require('./config/db');
 const authRoutes = require('./routers/authRoutes');
 const goalRoutes = require('./routers/goalRoutes');
 const transcationRouters = require('./routers/transcationRoutes');
 const satisfactionRoutes = require('./routers/satisfactionRoutes');
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
