@@ -9,8 +9,6 @@ exports.addSatisfaction = async (req, res) => {
             return res.status(400).json({ message: 'Transaction ID and rating are required' });
         }
 
-
-
         const transaction = await Transaction.findOne({ _id: transactionId, user: req.user._id });
 
         if (!transaction) {
